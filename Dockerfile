@@ -3,27 +3,23 @@ FROM eclipse-temurin:17-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copy your project files
+# Copy everything into the build container
 COPY . .
 
-# Build the project using Maven Wrapper or Maven
+# Build the project
 RUN ./mvnw clean package -DskipTests || mvn clean package -DskipTests
 
 
-# ========== Stage 2: Run the application ==========
+# ========== Stage 2: Run the Application ==========
 FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
-# Copy the built jar from the previous stage
+# Copy only the final JAR from stage 1
 COPY --from=build /app/target/*.jar app.jar
 
-# Create config directory
-RUN mkdir -p /app/config
-
-# Copy your application.properties
-COPY src/main/resources/application.properties /app/config/application.properties
-
+# Expose port 8080
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.location=file:/app/config/application.properties"]
+# Run the Spring Boot application
+ENTRYPOINT ["java", "-jar", "app.jar"]
