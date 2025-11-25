@@ -1,18 +1,29 @@
-# Use OpenJDK 17 on Alpine Linux
-FROM eclipse-temurin:17-jdk-alpine
+# ========== Stage 1: Build the JAR ==========
+FROM eclipse-temurin:17-jdk-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
-# Copy the Spring Boot jar
-COPY target/shop_sphere-0.0.1-SNAPSHOT.jar app.jar
+# Copy your project files
+COPY . .
 
-# Copy your application.properties to a config folder
+# Build the project using Maven Wrapper or Maven
+RUN ./mvnw clean package -DskipTests || mvn clean package -DskipTests
+
+
+# ========== Stage 2: Run the application ==========
+FROM eclipse-temurin:17-jdk-alpine
+
+WORKDIR /app
+
+# Copy the built jar from the previous stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Create config directory
 RUN mkdir -p /app/config
+
+# Copy your application.properties
 COPY src/main/resources/application.properties /app/config/application.properties
 
-# Expose port
 EXPOSE 8080
 
-# Start the application and tell Spring where to find the external config
 ENTRYPOINT ["java", "-jar", "app.jar", "--spring.config.location=file:/app/config/application.properties"]
