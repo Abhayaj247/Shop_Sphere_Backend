@@ -1,28 +1,35 @@
-# ===== Stage 1: Build JAR =====
-FROM eclipse-temurin:17-jdk-alpine AS build
+# ========== Stage 1: Build ========== 
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# Copy the pom and wrapper files first
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn .mvn
 
-# Give execute permission to mvnw (important for Render)
+# Ensure mvnw is executable
 RUN chmod +x mvnw
 
-# Build the project
+# Download dependencies (caching)
+RUN ./mvnw dependency:go-offline
+
+# Copy the full project
+COPY src src
+
+# Build the jar
 RUN ./mvnw clean package -DskipTests
 
 
-# ===== Stage 2: Run the Application =====
+# ========== Stage 2: Run ========== 
 FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
-# Copy only the final JAR from Stage 1
 COPY --from=build /app/target/*.jar app.jar
 
 # Expose port
 EXPOSE 8080
 
-# Run the Spring Boot app
+# Use Spring Boot externalized config from environment variables
 ENTRYPOINT ["java", "-jar", "app.jar"]
